@@ -1,3 +1,35 @@
 body {
-    padding: 10px;
+    padding: 20px;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.7)),
+                  url('/static/auctions/namek.jpg');
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+td {
+    text-align: center; 
+    padding:5px;
+}
+.center_table {
+    margin: 0 auto;
+    width: 10%;
+}
+
+.display_table {
+    width: 100%;
+}
+#list_index_btn {
+    background-color: transparent;
+    border: none;
+}
+
+.cardImage {
+    padding:10px;
+    height:300px;
+    width:300px;
+}
+
+.mycontainer {
+    display:grid;
+    margin: 10px;
 }

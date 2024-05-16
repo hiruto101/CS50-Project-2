@@ -1,0 +1,34 @@
+{% extends "auctions/layout.html" %}
+{% load static %}
+
+{% block body %}
+<form action= "{% url 'mywatchlist' %}" method="post">
+    <div class="form-group">
+      {% csrf_token %}
+        <label>Category</label>
+        <select name="category">
+        <option class="form-control" value="all">All</option>
+            {% for cat in category %}
+            <option class="form-control" value="{{ cat.category }}" 
+            {% if cat.category  == getCategory %} selected {% endif %}>
+                    {{ cat.category }}
+            </option>
+            {% endfor %}
+        </select>
+        <input type="submit" value="Filter">
+    </div>
+</form>
+
+<div class="row mx-1">
+    {% for list in listings %}
+    <div class="card" style="width: 18rem;">
+        <img class="card-img-top" src="{{ list.imgURL }}" alt="{{list.title}}">
+        <div class="card-body">
+          <h5 class="card-title">{{ list.title }}</h5>
+          <p class="card-text">{{ list.description }}</p>
+          <a href="{% url 'view_list' list.id %}" class="btn btn-primary">View Details</a>
+        </div>
+      </div>
+      {% endfor %}
+</div>
+{% endblock %}

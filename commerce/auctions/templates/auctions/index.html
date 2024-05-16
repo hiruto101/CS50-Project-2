@@ -1,7 +1,51 @@
 {% extends "auctions/layout.html" %}
+{% load static %}
 
 {% block body %}
     <h2>Active Listings</h2>
 
-    TODO
+    <!-- Category Area-->
+    <form action= "{% url 'index' %}" method="post">
+        <div class="form-group">
+          {% csrf_token %}
+            <label>Category</label>
+            <select name="category">
+            <option class="form-control" value="all">All</option>
+                {% for cat in category %}
+                  <option class="form-control" value="{{ cat.category }}" 
+                  {% if cat.category  == getCategory %} selected {% endif %}>
+                          {{ cat.category }}
+                  </option>
+                {% endfor %}
+            </select>
+            <input type="submit" value="Filter">
+        </div>
+      </form>
+      <h5>Listing for: {{ getCategory.capitalize }}</h5>
+      
+      
+        <div class="card-group">
+            {% for list in listings %}
+            <div class="mycontainer">
+              <div class="card text-center" style="width: 18rem;">
+                  {% if list.imgURL == "" %}
+                  <img id="cardImage" src="{% static 'auctions/no-image.jpg' %}" alt="{{list.title}}">
+                  {% else %}
+                    <img id="cardImage" src="{{ list.imgURL }}" alt="{{list.title}}">
+                  {% endif %}
+                  <div class="card-body">
+                    <h5 class="card-title">{{ list.title }}</h5>
+                    <p class="card-text">{{ list.description }}</p>
+                    <a href="{% url 'view_list' list.id %}" class="btn btn-primary">View Details</a>
+                  </div>
+                  <div class="card-footer">
+                    <small class="text-muted">{{list.date}}</small>
+                  </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+
+   
 {% endblock %}
