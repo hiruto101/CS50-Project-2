@@ -3,7 +3,7 @@ from .models import User, Listing, Category, Bid, Comment
 # Register your models here.
 
 class ListingAdmin(admin.ModelAdmin):
-    filter_horizontal = ("watchlist","bids")    
+    filter_horizontal = ("watchlist",)    
 
 admin.site.register(User)
 admin.site.register(Listing, ListingAdmin)

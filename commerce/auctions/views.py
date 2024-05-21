@@ -4,7 +4,8 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
-from django.db.models import Max
+from django.db.models import Max, F,Case, When,Value, CharField
+from django.db.models.functions import Coalesce
 from datetime import datetime
 
 from .models import User, Listing, Category, Bid, Comment
@@ -12,12 +13,18 @@ from .models import User, Listing, Category, Bid, Comment
 
 def index(request):
     if request.method == "POST":
-        listing_id = request.POST.get("list_id")
-        getCategory = request.POST.get("category")
+        getCategory = request.POST.get("category", "all")
         category = Category.objects.all()
-        listing = Listing.objects.all()
+        #this is new
+        listings = Listing.objects.filter(isActive = True).annotate(
+            max_bid=Coalesce(Max("bid__bidprice"), F("start_bid"))
+        )
         
-        new_list = getFilter(listing, getCategory)
+        new_list=listings.filter(listing_category__category=getCategory)
+      
+        
+        if getCategory.lower() == "all":
+            new_list = listings
         
         return render(request, "auctions/index.html", {
             "listings":new_list,
@@ -25,10 +32,12 @@ def index(request):
             "getCategory":getCategory
         })
     else:
-        listings=Listing.objects.all()
-        category=Category.objects.all()
         
-        print(datetime.now())
+        category=Category.objects.all()
+        listings = Listing.objects.filter(isActive = True).annotate(
+        max_bid=Coalesce(Max("bid__bidprice"), F("start_bid"))
+        )
+        
         return render(request, "auctions/index.html",{
             "listings":listings,
             "category":category,
@@ -122,7 +131,49 @@ def new_list(request):
             "user":user
             })
  
+
+@login_required
+def editlist(request, id):
+    
+    listing = Listing.objects.annotate(
+        max_bid=Coalesce(Max("bid__bidprice"), F("start_bid"))
+    ).get(pk=id)
+    category = Category.objects.all()
+    getCategory = listing.listing_category.category # this is how to access the value from foreign key
+    
+    return render(request, "auctions/editlist.html", {
+        "listing":listing,
+        "category":category,
+        "getCategory":getCategory
+    })
+
+
+@login_required
+def editsave(request, id):
+    try:
+        if request.method == "POST":
+            listing = Listing.objects.get(pk = id)
+            print("hello",listing)
+            title = request.POST.get("title", listing.title)
+            imgURL = request.POST.get("imgURL") or listing.imgURL
+            desc = request.POST.get("desc", listing.description)
+            category = request.POST.get("category", listing.listing_category.category)
+
+            # Assign value
+            listing.title = title
+            listing.imgURL = imgURL
+            listing.description = desc
+            listing.category = category
+            
+            # Save the updated listing object
+            listing.save()
+            
+            return HttpResponseRedirect(reverse("view_list", args=[id]))
         
+    except Listing.DoesNotExist:
+        print("Listing does not exist")
+        
+           
 @login_required      
 def mywatchlist(request):
     
@@ -178,55 +229,59 @@ def my_list(request):
 
   
 def view_list(request, id): # view individual active list
-    
+    isWinner = False
     if request.method == "POST":
         getComment = request.POST.get("comment")
         getId = request.POST.get("list_id")
- 
+        
+        #check if there is a new comment
         if getComment:
             newComment = addComment(request, getId, getComment)
-            print(request.user)
-        
-        listing = Listing.objects.get(pk=id)
+        #NEW KNOWLEDGE listing with annotate
+        listing = Listing.objects.annotate(
+            max_bid = Coalesce(Max("bid__bidprice"), 0),
+        ).get(pk=id)
+        # get the highest bidder
+        highest_bidder = Bid.objects.filter(listing__id=id).order_by('-bidprice').first() # get the highest bidder
+        # check if there is a bid and if the user is the winner
+        if not listing.isActive and listing.bid:
+            if request.user.username == highest_bidder.bidder:
+                isWinner = True
+        # 
         isUserWatching = request.user in listing.watchlist.all()
-        message = listing.list.all().order_by('-pk')
+        message = listing.list.all().order_by('-pk') # All the comment messages
         if message == None:
             message = "No comment"
-        
-        return render(request,"auctions/listing.html", {
-        "listing":listing,
-        "isUserWatching":isUserWatching,
-        "messages":message
-        })
-
-    else:
-        listing = Listing.objects.get(pk=id)
-        isUserWatching = request.user in listing.watchlist.all()
-        message = listing.list.all().order_by('-pk') # comments by users sorted 
-       
-        if message == None:
-            message = "No comment"
-        
-        # check for the current highest price/bid
-        #highest_bid = Bid.objects.get(pk=id).order_by('-bidprice').first()
-        highest_bid = listing.bid.all().order_by("-bidprice").first()
-      
-        if highest_bid is None:
-            curr_bid = {
-                "bidder":listing.owner,
-                "bid":listing.start_bid
-            }
-        else:
-            curr_bid = {
-                "bidder": highest_bid.bidder,
-                "bid": highest_bid.bidprice
-            }
         
         return render(request,"auctions/listing.html", {
             "listing":listing,
+            "highestBidder":highest_bidder,
             "isUserWatching":isUserWatching,
             "messages":message,
-            "currbid":curr_bid
+            "isWinner":isWinner
+         })
+
+    else:
+        listing = Listing.objects.annotate(
+            max_bid = Coalesce(Max("bid__bidprice"), 0),
+        ).get(pk=id)
+        curr_user = request.user.username
+        highest_bidder = Bid.objects.filter(listing__id=id).order_by('-bidprice').first()
+        if not listing.isActive and highest_bidder:
+            if request.user.username == highest_bidder.bidder.username:
+                isWinner = True
+        isUserWatching = request.user in listing.watchlist.all()
+        message = listing.list.all().order_by('-pk') # comments by users sorted 
+    
+        if message == None:
+            message = "No comment"
+        
+        return render(request,"auctions/listing.html", {
+            "listing":listing,
+            "highestBidder":highest_bidder,
+            "isUserWatching":isUserWatching,
+            "messages":message,
+            "isWinner":isWinner
         })
         
         
@@ -256,50 +311,46 @@ def addwatchlist(request, id):
 def placeBid(request, id):
     if request.method == "POST":
         try:
-            #TODO
-            #bid = Bid.objects.create(bidprice = price, bidder = request.user.id)
-            #list = Listing.objects.get(pk = id)
-            #list.bid = bid
-            #list.save()
             bid = int(request.POST.get("bid")) # bid price
             bidder = User.objects.get(pk = request.user.id)
             status = False
             curr_list = Listing.objects.get(pk = id)
-            
-            #get the highest bidder
-       
-           
-           # check for highest bid    
+            has_bid = Bid.objects.filter(bidder=bidder, listing=curr_list).exists() # check if user has a bid
+                         
+            # check for highest bid
             if not curr_list.bid.exists(): # if no bid is placed yet
-                if curr_list.start_bid < bid:
-                    new_bid = Bid.objects.create(bidprice=bid, bidder=bidder)
+                if curr_list.start_bid <= bid:
+                    new_bid = Bid.objects.create(bidprice=bid, bidder=bidder, listing=curr_list)
                     curr_list.bid.add(new_bid)
                     status = True
                 else:
                     message = "Bid cannot be lower or equal than starting bid"      
             elif curr_list.bid.aggregate(Max('bidprice'))['bidprice__max'] < bid:
-                new_bid = Bid.objects.create(bidprice=bid, bidder=bidder)
-                curr_list.bid.add(new_bid)
-                status = True
+                if has_bid: # update the user bid
+                    Bid.objects.filter(bidder=bidder, listing=curr_list).update(bidprice = bid)
+                else:
+                    new_bid = Bid.objects.create(bidprice=bid, bidder=bidder, listing=curr_list)
+                    curr_list.bid.add(new_bid)
+                    status = True
             else:
                 message = "Bid is lower than highest bid"
            
-           
-            curr_bid = {
-            "bidder":curr_list.owner,
-            "bid":curr_list.start_bid
-            }
-            
             # add to the user's watchlist if not yet added 
             if bidder not in curr_list.watchlist.all():
                 curr_list.watchlist.add(bidder)
                 
-  
+            # pass this data
+            highest_bidder = Bid.objects.filter(listing__id=id).order_by('-bidprice').first()
+            listing = Listing.objects.annotate(
+                max_bid = Coalesce(Max("bid__bidprice"), 0),
+            ).get(pk=id)
+                          
             return render(request, "auctions/listing.html", {
-                "listing":curr_list,
+                "listing":listing,
+                "highestBidder":highest_bidder,
                 "message":message,
-                "currbid":curr_bid
             })
+            
         except Exception as e:
             message = "Error"
             print(e)
@@ -314,6 +365,17 @@ def addComment(request, id, comment):
     listing = Listing.objects.get(id=int(id))
     newComment = Comment.objects.create(message=comment, user=request.user, listing=listing)
     newComment.save()
+
+
+@login_required
+def closeList(request):
+    listid = request.POST.get("listid")
+    print(listid)
+    listing = Listing.objects.get(pk = listid)
+    listing.isActive = False
+    listing.save()
+    
+    return HttpResponseRedirect(reverse("my_list"))
 
     
 def getFilter(currlist, category, isActive = None):

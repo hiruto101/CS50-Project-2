@@ -1,6 +1,6 @@
 {% extends "auctions/layout.html" %}
 {% load static %}
-
+<!--Category-->
 {% block body %}
 <form action= "{% url 'my_list' %}" method="post">
   <div class="form-group">
@@ -18,25 +18,45 @@
       <input type="submit" value="Filter">
   </div>
 </form>
-
-<div class="card-deck">
+<!-- Cards-->
+<div class="card-group">
   {% for list in listings %}
-    <div class="card text-center" style="width: 18rem;">
-        {% if list.imgURL == "" %}
-        <img id="cardImage" src="{% static 'auctions/no-image.jpg' %}" alt="{{list.title}}">
-        {% else %}
-          <img id="cardImage" src="{{ list.imgURL }}" alt="{{list.title}}">
-        {% endif %}
-        <div class="card-body">
-          <h5 class="card-title">{{ list.title }}</h5>
-          <p class="card-text">{{ list.description }}</p>
-          <a href="{% url 'view_list' list.id %}" class="btn btn-primary">View Details</a>
-          <p class="card-text"><small class="text-muted">{{list.date}}</small></p>
+    <div class="mycontainer">
+      <div class="card text-center" style="width: 18rem;">
+          {% if list.imgURL == "" %}
+          <img id="cardImage" src="{% static 'auctions/no-image.jpg' %}" alt="{{list.title}}">
+          {% else %}
+            <img id="cardImage" src="{{ list.imgURL }}" alt="{{list.title}}">
+          {% endif %}
+          <div class="card-body">
+            <a href="{% url 'view_list' list.id %} "><h5 class="card-title">{{ list.title }}</h5></a>
+            <p class="card-text">{{ list.description }}</p>
+            <a href="{% url 'view_list' list.id %}" class="btn btn-primary">View Details</a>
+            <div>
+              {% if list.isActive %}
+              <form action="{% url 'closelist' %}" method="post"> <!-- Close List button -->
+                {% csrf_token %}
+                <input type="hidden" name="listid" value="{{ list.id }}">
+                <button type="submit" class="btn btn-danger">Close List</button>
+              </form>
+              <div>
+              <form action="{% url 'editlist' list.id %}"> <!-- Edit Button -->
+                {% csrf_token %}
+                <input type="hidden" name="listid" value="{{ list.id }}">
+                <button type="submit" class="btn btn-warning">Edit</button>
+              </form>
+              </div>
+              {% else %}
+              <p class="card-text"><small class="text-muted">List is Closed</small></p>
+              {% endif %}
+            </div>
+            <p class="card-text"><small class="text-muted">{{list.date}}</small></p>
+          </div>
+          <div class="card-footer">
+            <small class="text-muted"></small>
+          </div>
         </div>
-        <div class="card-footer">
-          <small class="text-muted">{{list.owner}} {{list.isActive }}</small>
-        </div>
-      </div>
+    </div>
   {% endfor %}
 </div>
 

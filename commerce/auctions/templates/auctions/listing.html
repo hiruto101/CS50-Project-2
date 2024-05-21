@@ -5,71 +5,108 @@
 
 <div class="center_table">
     <table class="display_table">
-        <tr> 
+        <tr>    
             <td>
-                <h3 style="color:red">{{ message }}</h3>
-                <h2> {{ listing.title }} </h2> 
+                {% if listing.isActive %}
+                    <h3 style="color:red">{{ message }}</h3>
+                    {% if listing.isActive %}
+                        {% if listing.owner|lower == user.username|lower %}
+                            <form action="{% url 'closelist' %}" method="post"> <!-- Close List button -->
+                                {% csrf_token %}
+                                <input type="hidden" name="listid" value="{{listing.id}}">
+                                <button type="submit" class="btn btn-danger">Close List</button>
+                            </form>
+                        {%  endif %}
+                    {% endif %}
+                    <h2> {{ listing.title }} </h2> 
 
-                <p> {{ listing.description }}</p>
+                    <p> {{ listing.description }}</p>
+                    
+                    {% if listing.imgURL == None %}
+                        <img src="{% static 'auctions/no-image.jpg' %}" height="300px"> 
+                    {% else %}
+                        <img src="{{ listing.imgURL }}" height=300px>
+                    {% endif %}
+                    <!-- If there is no current bidder -->   
+                    {% if listing.max_bid == 0 %}
+                        <h5>no current bid</h5>
+                        <h4>Starting Bid: {{listing.start_bid}}</h4>
+                    {% else %}
+                        <h4>Current bid: {{listing.max_bid}}</h4>
+                    {% endif %}
+                    <!-- If there is a bid -->
+                    {% if listing.max_bid == 0 %}
+                    <h4>Owner: {{listing.owner}}</h4>
+                    {% else %}
+                    <h4>Highest Bidder: {{highestBidder.bidder}}</h4>
+                    {% endif %}
+                {% else %} <!-- if lisitng is closed -->
+                    <h2> {{ listing.title }} </h2> 
 
-                {% if listing.imgURL == None %}
-                    <img src="{% static 'auctions/no-image.jpg' %}" height="300px"> 
-                {% else %}
-                    <img src="{{ listing.imgURL }}" height=300px>
+                    <p> {{ listing.description }}</p>
+
+                    {% if listing.imgURL == None %}
+                        <img src="{% static 'auctions/no-image.jpg' %}" height="300px"> 
+                    {% else %}
+                        <img src="{{ listing.imgURL }}" height=300px>
+                    {% endif %}
+                    <!-- check if current user is the winner -->
+                    {% if isWinner %}
+                    <h1>You are the Winner</h1>
+                    {% endif %}
+                    {% if highestBidder.bidder %}
+                    <div>Bid is Closed Winning bid is ${{ listing.max_bid }} by {{ highestBidder.bidder }}</div>
+                    {% else %}
+                    <div>No bid was made</div>
+                    {% endif %}
                 {% endif %}
-                <h4>Current bid: {{currbid.bid}}</h4>
-                <h4>Bidder: {{ currbid.bidder }}</h4>
-                <table>
-                    {% for comment in commnets %}
-                        <tr>
-                            ccc
-                        </tr>
-                    {% endfor %}
-                </table>
-
             </td>
         </tr>
         <tr>
+            <!-- Form for POST -->
             <td>
                 {% if user.is_authenticated %}
-                    <form action="{%  url 'placeBid' listing.id %}" method="post"> <!--place bid route-->
-                        {% csrf_token %}
-                        <input type="hidden" name="user" value="{{ user.id }}">
-                        <input type="hidden" name="list_id" value="{{ listing.id }}">
-
-                        <div class="form-group">
-                            <input class="form-control" autofocus type="number" name="bid" placeholder="Place Bid">
-                        </div>                        
-                        <div class="form-group">
-                            <input class="form-control" type="submit" value="Place Bid">
-                        </div>
-                    </form>
-
-                    </div>
-                        {% if isUserWatching %}
-                        <form action="{% url 'removewatchlist' listing.id %}" method="post">
+                    {% if listing.isActive %} 
+                        <form action="{%  url 'placeBid' listing.id %}" method="post"> <!--place bid route-->
                             {% csrf_token %}
+                            <input type="hidden" name="user" value="{{ user.id }}">
+                            <input type="hidden" name="list_id" value="{{ listing.id }}">
+
                             <div class="form-group">
-                            <button type="submit" class="btn btn-info">Remove from watchlist</button>
+                                <input class="form-control" autofocus type="number" name="bid" placeholder="Place Bid">
+                            </div>                        
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-primary">Place Bid</button>
                             </div>
                         </form>
-                        {% else %}
-                        <form action="{% url 'addwatchlist' listing.id %}" method="post">
-                            {% csrf_token %}
-                            <div>
-                                <button type="submit" class="btn btn-info">Add from watchlist</button>   
-                            </div>
-                        </form>
-                        {% endif %}
+                        <!-- Remove from watchlist -->
+                        </div>
+                            {% if isUserWatching %}
+                            <form action="{% url 'removewatchlist' listing.id %}" method="post">
+                                {% csrf_token %}
+                                <div class="form-group">
+                                <button type="submit" class="btn btn-info">Remove from watchlist</button>
+                                </div>
+                            </form>
+                            {% else %}
+                            <form action="{% url 'addwatchlist' listing.id %}" method="post">
+                                {% csrf_token %}
+                                <div>
+                                    <button type="submit" class="btn btn-info">Add from watchlist</button>   
+                                </div>
+                            </form>
+                            {% endif %}
+                        {% endif %}    
                 {% else %}
                     <a href = "{% url 'login' %}"> <h4 style="color:red">login to bid</h4> </a>
                 {% endif %}
+                
             </td>
         </tr>
     </table>    
 </div>
-<!-- Comment  Section-->
 
+<!-- Comment  Section-->
 <form action ="{% url 'view_list' listing.id %}" method="post">
     {% csrf_token %}
     <input type="hidden" name="list_id" value="{{listing.id}}">
@@ -78,10 +115,12 @@
         <div class="card shadow-0 border" style="background-color: #f0f2f5;">
             <div class="card-body p-4">
             {% if user.is_authenticated %}
-            <div data-mdb-input-init class="form-outline mb-4">
-                <input type="text" id="addANote" class="form-control" placeholder="Type comment..." name="comment">
-                <button type="submit" class="btn btn-primary" data-mdb-ripple-init style="margin:3px">Submit</button>
-            </div>
+                {% if listing.isActive %}
+                    <div data-mdb-input-init class="form-outline mb-4">
+                        <input type="text" id="addANote" class="form-control" placeholder="Type comment..." name="comment">
+                        <button type="submit" class="btn btn-primary" data-mdb-ripple-init style="margin:3px">Submit</button>
+                    </div>
+                {% endif %}
             {% endif %}
                 {% if messages %}
                     {% for message in messages %}
