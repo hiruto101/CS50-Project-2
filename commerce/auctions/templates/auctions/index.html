@@ -34,7 +34,7 @@
                     <img id="cardImage" src="{{ list.imgURL }}" alt="{{list.title}}">
                   {% endif %}
                   <div class="card-body">
-                    <h5 class="card-title">Item: {{ list.title }}</h5>
+                    <a href="{% url 'view_list' list.id %}"><h5 class="card-title">Item: {{ list.title }}</h5></a>
                     <p>Price: $ {{ list.max_bid }}</p>
                     <p class="card-text">{{ list.description }}</p>
                     <a href="{% url 'view_list' list.id %}" class="btn btn-primary">View Details</a>

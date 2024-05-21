@@ -1,0 +1,50 @@
+{% extends "auctions/layout.html" %}
+{% load static %}
+
+{% block body %}
+    <h2>Categories</h2>
+
+    <!-- Category Area-->
+    <div>
+        <ul class="nav">
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'category' %}?category=all">All</a> <!-- note to me pass value from link-->
+            </li>
+            {% for cat in category %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'category' %}?category={{ cat.category }}">{{ cat.category }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+    <!-- Active Listing -->
+    <!-- Display Area -->
+    <h5>Listing for:</h5>
+        <div class="card-group">
+            {% for list in listings %}
+            <div class="mycontainer">
+              <div class="card text-center" style="width: 18rem;">
+                    {% if not list.isActive %} 
+                    <h2 style="color:red">Listing Closed</h2>
+                    {% endif %}
+                    {% if list.imgURL == "" %}
+                        <img id="cardImage" src="{% static 'auctions/no-image.jpg' %}" alt="{{list.title}}">
+                    {% else %}
+                        <img id="cardImage" src="{{ list.imgURL }}" alt="{{list.title}}">
+                    {% endif %}
+                    <div class="card-body">
+                    <a href="{% url 'view_list' list.id %}"><h5 class="card-title">Item: {{ list.title }}</h5></a>
+                    <p>Price: $ {{ list.max_bid }}</p>
+                    <p class="card-text">{{ list.description }}</p>
+                    <a href="{% url 'view_list' list.id %}" class="btn btn-primary">View Details</a>
+                    </div>
+                    <div class="card-footer">
+                    <small class="text-muted">{{list.date}}</small>
+                  </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+   
+{% endblock %}

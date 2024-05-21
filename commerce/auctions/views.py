@@ -366,6 +366,25 @@ def addComment(request, id, comment):
     newComment = Comment.objects.create(message=comment, user=request.user, listing=listing)
     newComment.save()
 
+def view_category(request):
+    
+    if request.method == "POST":
+        pass
+    
+    else:
+        getcat = request.GET.get("category", "all")
+        category = Category.objects.all()
+
+        if getcat == "all":
+            listings = Listing.objects.all()
+        else:
+            listings = Listing.objects.filter(listing_category__category = getcat)
+                
+          
+        return render(request, "auctions/category.html", {
+            "category":category,
+            "listings":listings
+        })
 
 @login_required
 def closeList(request):
